@@ -1,0 +1,118 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Azure Heat — Port Azure</title>
+<style>
+  html, body { margin:0; height:100%; overflow:hidden; background:#1a1026; font-family: Verdana, Geneva, Tahoma, sans-serif; color:#fff; }
+  #game { position:fixed; inset:0; width:100%; height:100%; display:block; }
+  #hud { position:fixed; inset:0; pointer-events:none; display:none; }
+  .panel { background:rgba(10,10,24,.55); border:1px solid rgba(255,255,255,.25); border-radius:8px; padding:8px 10px; }
+  #topbar { position:absolute; top:10px; left:10px; display:flex; gap:10px; align-items:flex-start; }
+  #cash { font-size:20px; font-weight:bold; color:#7dff8a; }
+  #stars { font-size:22px; letter-spacing:3px; color:#ffd23e; text-shadow:0 0 6px #000; min-height:26px; }
+  #stars .off { color:rgba(255,255,255,.25); }
+  #healthwrap { width:190px; height:14px; background:rgba(0,0,0,.6); border:1px solid #fff3; border-radius:7px; overflow:hidden; }
+  #healthbar { height:100%; width:100%; background:linear-gradient(90deg,#ff4757,#ff6b81); transition:width .15s; }
+  #bustedwrap { width:190px; height:8px; background:rgba(0,0,0,.6); border-radius:4px; overflow:hidden; margin-top:4px; display:none; }
+  #bustedbar { height:100%; width:0%; background:#3e9bff; }
+  #weapon { position:absolute; right:12px; bottom:12px; text-align:right; font-size:15px; }
+  #weapon .ammo { font-size:26px; font-weight:bold; }
+  #speed { position:absolute; right:12px; bottom:132px; text-align:right; font-size:22px; font-weight:bold; display:none; text-shadow:0 2px 5px #000; }
+  #objective { position:absolute; top:10px; left:50%; transform:translateX(-50%); max-width:520px; text-align:center; font-size:15px; }
+  #objective b { color:#ffd23e; }
+  #toast { position:absolute; top:76px; left:50%; transform:translateX(-50%); font-size:19px; font-weight:bold; color:#7dff8a; text-shadow:0 2px 6px #000; opacity:0; transition:opacity .3s; }
+  #prompt { position:absolute; bottom:120px; left:50%; transform:translateX(-50%); font-size:16px; }
+  #minimap { position:absolute; left:10px; bottom:10px; width:180px; height:180px; border:2px solid rgba(255,255,255,.35); border-radius:8px; background:rgba(8,12,20,.75); }
+  #crosshair { position:absolute; left:50%; top:50%; transform:translate(-50%,-50%); font-size:20px; color:#fff; text-shadow:0 0 4px #000; display:none; }
+  .screen { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    background:linear-gradient(180deg, rgba(26,10,40,.35), rgba(10,6,24,.78)); pointer-events:auto; z-index:5; padding:20px; box-sizing:border-box; }
+  .screen h1 { font-size:64px; margin:0 0 4px; letter-spacing:4px; color:#ffb03a; text-shadow:0 4px 0 #b33a6b, 0 8px 24px #000; font-style:italic; }
+  .screen h2 { font-size:34px; margin:0 0 10px; color:#ffb03a; text-shadow:0 3px 12px #000; }
+  .screen p { max-width:620px; line-height:1.5; font-size:15px; text-shadow:0 1px 4px #000; }
+  .controls { display:grid; grid-template-columns:auto auto; gap:2px 16px; font-size:13px; text-align:left; margin:10px 0; }
+  .controls b { color:#ffd23e; text-align:right; }
+  button { pointer-events:auto; cursor:pointer; background:#ff7847; color:#fff; border:0; border-radius:8px; padding:12px 34px; font-size:19px; font-weight:bold; margin:6px; box-shadow:0 4px 14px rgba(0,0,0,.5); }
+  button:hover { background:#ffa047; }
+  button.ghost { background:rgba(255,255,255,.15); font-size:14px; padding:9px 20px; }
+  #pauseScreen, #overScreen { display:none; }
+  #status { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
+</style>
+</head>
+<body>
+<canvas id="game" aria-label="Azure Heat: a 3D open-world crime game in the fictional city of Port Azure"></canvas>
+
+<div id="hud">
+  <div id="topbar">
+    <div class="panel">
+      <div id="cash">$250</div>
+      <div id="healthwrap"><div id="healthbar"></div></div>
+      <div id="bustedwrap"><div id="bustedbar"></div></div>
+      <div style="font-size:11px;margin-top:3px">PORT AZURE</div>
+    </div>
+    <div id="stars"></div>
+  </div>
+  <div id="objective" class="panel"></div>
+  <div id="toast"></div>
+  <div id="prompt" class="panel" style="display:none"></div>
+  <canvas id="minimap" width="180" height="180"></canvas>
+  <div id="speed"></div>
+  <div id="weapon" class="panel"><div>PISTOL</div><div class="ammo">12 / 48</div><div style="font-size:11px">Click shoot · R reload</div></div>
+  <div id="crosshair">+</div>
+</div>
+
+<div id="startScreen" class="screen">
+  <h1>AZURE HEAT</h1>
+  <p><b>Port Azure</b> — a sun-baked coastal city of palm boulevards, neon marinas and quiet money.
+  You are <b>Mara Venn</b>, a wheelman-for-hire who just got burned by the dock syndicate that ran her crew.
+  Broke and blacklisted, she takes any job the city whispers about: rush a package across town, run the
+  checkpoint gauntlet, lift a marked car for the chop shop. Earn cash, dodge the Port Azure PD,
+  and buy back your name — one job at a time.</p>
+  <div class="controls">
+    <b>W A S D</b><span>Move / drive</span>
+    <b>Mouse</b><span>Look (click the game to lock the mouse)</span>
+    <b>Shift</b><span>Sprint</span>
+    <b>Space</b><span>Jump / handbrake</span>
+    <b>E</b><span>Enter / exit car</span>
+    <b>Click</b><span>Shoot pistol</span>
+    <b>R</b><span>Reload</span>
+    <b>Esc / P</b><span>Pause</span>
+  </div>
+  <div>
+    <button id="startBtn">START ENGINE</button>
+    <button id="continueBtn" class="ghost" style="display:none">CONTINUE SAVED GAME</button>
+    <button id="newBtn" class="ghost" style="display:none">NEW GAME</button>
+  </div>
+  <p style="font-size:12px;opacity:.85">An original game built for make.fun · No network needed · Progress saves in your browser</p>
+</div>
+
+<div id="pauseScreen" class="screen">
+  <h2>PAUSED</h2>
+  <div class="controls">
+    <b>W A S D</b><span>Move / drive</span><b>Mouse</b><span>Look</span><b>Shift</b><span>Sprint</span>
+    <b>Space</b><span>Jump / handbrake</span><b>E</b><span>Enter / exit car</span><b>Click</b><span>Shoot</span><b>R</b><span>Reload</span>
+  </div>
+  <div><button id="resumeBtn">RESUME</button><button id="restartBtn" class="ghost">RESTART DAY</button></div>
+</div>
+
+<div id="overScreen" class="screen">
+  <h2 id="overTitle">WASTED</h2>
+  <p id="overText"></p>
+  <div><button id="respawnBtn">RESPAWN</button></div>
+</div>
+
+<p id="status" role="status" aria-live="polite"></p>
+
+<script src="./vendor/three.min.js"></script>
+<script src="./src/config.js"></script>
+<script src="./src/audio.js"></script>
+<script src="./src/world.js"></script>
+<script src="./src/vehicles.js"></script>
+<script src="./src/people.js"></script>
+<script src="./src/police.js"></script>
+<script src="./src/missions.js"></script>
+<script src="./src/hud.js"></script>
+<script src="./src/main.js"></script>
+</body>
+</html>
