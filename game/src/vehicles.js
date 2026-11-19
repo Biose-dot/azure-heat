@@ -98,7 +98,7 @@ AH.placeParkedCars = function (scene) {
 // Traffic: cars that cruise the grid in the right-hand lane, turn at intersections,
 // and stop for red lights and for the car ahead.
 AH.placeTraffic = function (scene) {
-  for (var i = 0; i < 14; i++) {
+  for (var i = 0; i < 12; i++) {
     var vertical = AH.rand() < 0.5;
     var road = AH.roadAt(AH.randInt(-AH.GRID, AH.GRID));
     var along = AH.randRange(-AH.CITY / 2, AH.CITY / 2);

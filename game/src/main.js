@@ -64,6 +64,16 @@ function showScreen(id) {
   });
   document.getElementById('hud').style.display = id ? 'none' : 'block';
 }
+// Pointer lock, hardened: Chrome returns a promise that rejects without a real user
+// gesture (synthetic clicks, screenshot harnesses) — that rejection must never surface.
+AH.lockPointer = function () {
+  var c = document.getElementById('game');
+  if (!c.requestPointerLock) return;
+  try {
+    var r = c.requestPointerLock();
+    if (r && r.catch) r.catch(function () {});
+  } catch (e) { /* not critical: the game still plays, mouse look just waits for a click */ }
+};
 function startPlay(fromSave) {
   AH.audio.init();
   var S = AH.state;
@@ -76,7 +86,7 @@ function startPlay(fromSave) {
       AH.player.pos.set(save.x || 6, 0, save.z || (AH.roadAt(2) + 4));
     }
   }
-  if (!SHOT) document.getElementById('game').requestPointerLock && document.getElementById('game').requestPointerLock();
+  if (!SHOT) AH.lockPointer();
   AH.hudToast('Welcome to Port Azure, Mara.', '#ffd23e');
 }
 AH.gameOver = function (kind) {
@@ -154,7 +164,7 @@ function bindInput() {
   });
   window.addEventListener('mousedown', function (e) {
     if (AH.state.mode !== 'play') return;
-    if (!pointerLocked && !SHOT) { document.getElementById('game').requestPointerLock(); return; }
+    if (!pointerLocked && !SHOT) { AH.lockPointer(); return; }
     if (e.button === 0) shoot();
   });
   document.getElementById('startBtn').addEventListener('click', function () { startPlay(false); });

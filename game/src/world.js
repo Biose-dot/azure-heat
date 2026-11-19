@@ -244,21 +244,19 @@ AH.buildPalmsAndLamps = function (scene) {
   var trunkMat = new THREE.MeshStandardMaterial({ color: 0x8a6a45, roughness: 1 });
   var frondMat = new THREE.MeshStandardMaterial({ color: 0x2e8b57, roughness: 1, side: THREE.DoubleSide });
   var trunkGeo = new THREE.CylinderGeometry(0.22, 0.34, 6.5, 6);
-  var frondGeo = new THREE.BoxGeometry(0.55, 0.06, 3.6);
+  // The crown is two flattened cones crossed at an angle: reads as a palm starburst from any
+  // distance for 2 draw calls instead of one per frond (there are ~60 palms in the city).
+  var crownGeo = new THREE.ConeGeometry(2.6, 1.15, 8);
   function palm(x, z) {
     var g = new THREE.Group();
     var trunk = new THREE.Mesh(trunkGeo, trunkMat);
     trunk.position.y = 3.25; trunk.rotation.z = AH.randRange(-0.08, 0.08); trunk.castShadow = true; g.add(trunk);
-    for (var i = 0; i < 6; i++) {
-      // Each frond is a thin leaf on a pivot at the crown, yawed around and drooped down.
-      var pivot = new THREE.Group();
-      pivot.position.y = 6.5;
-      pivot.rotation.y = (i / 6) * Math.PI * 2 + AH.randRange(-0.2, 0.2);
-      var f = new THREE.Mesh(frondGeo, frondMat);
-      f.position.set(0, 0.15, 1.7);
-      f.rotation.x = -0.42; // tip droops below horizontal
-      pivot.add(f);
-      g.add(pivot);
+    for (var i = 0; i < 2; i++) {
+      var crown = new THREE.Mesh(crownGeo, frondMat);
+      crown.position.y = 6.55;
+      crown.rotation.y = i * 0.4 + AH.randRange(-0.2, 0.2);
+      crown.scale.y = 0.55;
+      g.add(crown);
     }
     g.position.set(x, 0, z);
     scene.add(g);
@@ -304,6 +302,7 @@ AH.buildTrafficLights = function (scene) {
   var boxGeo = new THREE.BoxGeometry(0.55, 1.5, 0.55);
   var bulbGeo = new THREE.SphereGeometry(0.19, 8, 8);
   for (var ix = -2; ix <= 2; ix++) for (var iz = -2; iz <= 2; iz++) {
+    if ((ix + iz) % 2 !== 0) continue; // checkerboard subset: every other junction gets a light
     var g = new THREE.Group();
     var pole = new THREE.Mesh(poleGeo, poleMat); pole.position.y = 2.2; g.add(pole);
     var box = new THREE.Mesh(boxGeo, boxMat); box.position.y = 4.9; g.add(box);
